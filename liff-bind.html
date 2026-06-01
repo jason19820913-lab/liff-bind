@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>綁定候診通知</title>
+<style>
+  :root{ --g:#1f7a5a; --bg:#f5f7f6; --line:#dfe5e2; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{ margin:0; font-family:"Noto Sans TC",system-ui,sans-serif; background:var(--bg); color:#222; }
+  .wrap{ max-width:480px; margin:0 auto; padding:20px 16px 40px; }
+  h1{ font-size:20px; text-align:center; color:var(--g); margin:8px 0 4px; }
+  .sub{ text-align:center; color:#667; font-size:13px; margin-bottom:18px; }
+  .card{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
+  label{ display:block; font-size:14px; font-weight:600; margin:0 0 8px; }
+  .rooms{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .room{ border:2px solid var(--line); border-radius:12px; padding:12px 8px; text-align:center; cursor:pointer; background:#fff; }
+  .room.sel{ border-color:var(--g); background:#eef6f2; }
+  .room .r{ font-size:16px; font-weight:700; }
+  .room .d{ font-size:13px; color:#556; margin-top:2px; }
+  .room .c{ font-size:12px; color:#8a94a0; margin-top:4px; }
+  input[type=number]{ width:100%; font-size:22px; text-align:center; padding:12px; border:2px solid var(--line); border-radius:12px; }
+  button.go{ width:100%; font-size:18px; font-weight:700; color:#fff; background:var(--g); border:0; border-radius:12px; padding:15px; margin-top:6px; }
+  button.go:disabled{ background:#9bb8ac; }
+  .msg{ text-align:center; font-size:14px; padding:14px; }
+  .ok{ color:var(--g); }
+  .err{ color:#c0392b; }
+  .clinic{ text-align:center; font-weight:700; color:var(--g); margin-bottom:10px; }
+  .clist{ display:grid; gap:10px; }
+  .cbtn{ border:2px solid var(--line); border-radius:12px; padding:14px; background:#fff; text-align:left; font-size:16px; font-weight:600; cursor:pointer; }
+  .cbtn:disabled{ color:#aab; background:#f3f5f4; cursor:default; }
+  .cbtn .tag{ float:right; font-size:12px; font-weight:500; color:var(--g); }
+  .back{ background:none; border:0; color:var(--g); font-size:14px; padding:2px 0 8px; cursor:pointer; }
+</style>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <h1>候診進度通知綁定</h1>
+  <div class="sub">綁定後，還剩 5 位、3 位及輪到您時會主動通知</div>
+  <div id="app"><div class="msg">載入中…</div></div>
+</div>
+
+<script>
+// ===== 設定 =====
+var LIFF_ID = '在此貼上 LIFF ID';
+var API = 'https://script.google.com/macros/s/AKfycbyYmXOinG3AMnVQbVGdzR9AKqg-KUC7P_ofpjZfI2n7584Iu-v6GV1s5pW3bvblJ4nHLA/exec';
+
+// 可選：院區 QR 帶入 ?c=院區代碼&n=院區名（有帶就鎖定，沒帶就讓病人自己選）
+var qp = new URLSearchParams(location.search);
+var CLINIC = (qp.get('c')||'').trim();
+var CNAME  = (qp.get('n')||'').trim();
+var FROM_QR = !!CLINIC;
+var USER = { id:'', name:'' };
+var pick = { room:'', doctor:'' };
+
+function el(id){ return document.getElementById(id); }
+function get(url){ return fetch(url).then(function(r){ return r.json(); }); }
+
+function render(rooms){
+  var n1 = FROM_QR ? '①' : '②', n2 = FROM_QR ? '②' : '③';
+  var h = '';
+  if (!FROM_QR) h += '<button class="back" onclick="loadClinics()">← 重選院區</button>';
+  if (CNAME) h += '<div class="clinic">'+CNAME+'</div>';
+  h += '<div class="card"><label>'+n1+' 選擇看診診間</label><div class="rooms" id="rooms"></div></div>';
+  h += '<div class="card"><label>'+n2+' 輸入您的看診號碼</label>'+
+       '<input type="number" id="no" inputmode="numeric" placeholder="例：208"></div>';
+  h += '<button class="go" id="go" disabled>完成綁定</button>';
+  h += '<div class="msg" id="tip"></div>';
+  el('app').innerHTML = h;
+
+  var box = el('rooms');
+  if (!rooms.length){ box.innerHTML = '<div class="msg">目前查無診間資料</div>'; }
+  rooms.forEach(function(rm, i){
+    var d = document.createElement('div');
+    d.className = 'room';
+    d.innerHTML = '<div class="r">'+rm.room+'</div><div class="d">'+(rm.doctor||'')+
+                  '</div><div class="c">目前 '+(isNaN(rm.current)?'-':rm.current)+' 號</div>';
+    d.onclick = function(){
+      pick.room = rm.room; pick.doctor = rm.doctor;
+      Array.prototype.forEach.call(box.children, function(c){ c.classList.remove('sel'); });
+      d.classList.add('sel'); check();
+    };
+    box.appendChild(d);
+  });
+  el('no').addEventListener('input', check);
+  el('go').onclick = submit;
+}
+
+function check(){
+  var no = el('no').value;
+  el('go').disabled = !(pick.room && no && parseInt(no,10) > 0);
+}
+
+function submit(){
+  var no = el('no').value;
+  el('go').disabled = true;
+  el('tip').innerHTML = '送出中…';
+  var u = API + '?action=bind'
+    + '&userId='   + encodeURIComponent(USER.id)
+    + '&name='     + encodeURIComponent(USER.name)
+    + '&clinic='   + encodeURIComponent(CLINIC)
+    + '&clinicName='+ encodeURIComponent(CNAME)
+    + '&room='     + encodeURIComponent(pick.room)
+    + '&doctor='   + encodeURIComponent(pick.doctor)
+    + '&number='   + encodeURIComponent(no);
+  get(u).then(function(res){
+    if (res.ok){
+      el('app').innerHTML = '<div class="msg ok">✅ 綁定完成！<br>'+CNAME+' '+pick.room+
+        '　號碼 '+no+'<br><br>還剩 5 位、3 位及輪到您時會通知您，可關閉此頁。</div>';
+    } else {
+      el('tip').innerHTML = '<span class="err">綁定失敗：'+(res.error||'請重試')+'</span>';
+      el('go').disabled = false;
+    }
+  }).catch(function(){
+    el('tip').innerHTML = '<span class="err">連線失敗，請稍後再試</span>';
+    el('go').disabled = false;
+  });
+}
+
+function fail(t){ el('app').innerHTML = '<div class="msg err">'+t+'</div>'; }
+
+// ===== 院區選單（無 QR 時）=====
+function loadClinics(){
+  CLINIC = ''; CNAME = ''; pick = { room:'', doctor:'' };
+  el('app').innerHTML = '<div class="msg">載入院區…</div>';
+  get(API + '?action=clinics').then(function(res){
+    if (res && res.ok) renderClinics(res.clinics);
+    else fail((res && res.error) || '讀取院區清單失敗。');
+  }).catch(function(){ fail('連線失敗，請重試。'); });
+}
+function renderClinics(list){
+  el('app').innerHTML = '<div class="card"><label>① 選擇您掛號的院區</label><div class="clist" id="clist"></div></div>';
+  var box = el('clist');
+  (list||[]).forEach(function(c){
+    var b = document.createElement('button');
+    b.className = 'cbtn';
+    b.disabled = !c.active;
+    b.innerHTML = c.name + (c.active
+      ? '<span class="tag">看診中</span>'
+      : '<span class="tag" style="color:#aab">休診</span>');
+    b.onclick = function(){ CLINIC = c.code; CNAME = c.name; loadRooms(); };
+    box.appendChild(b);
+  });
+}
+function loadRooms(){
+  el('app').innerHTML = '<div class="msg">載入診間…</div>';
+  get(API + '?action=rooms&clinic=' + encodeURIComponent(CLINIC)).then(function(res){
+    if (res && res.ok) render(res.rooms);
+    else fail('讀取院區診間失敗，請重試。');
+  }).catch(function(){ fail('連線失敗，請重試。'); });
+}
+
+// ===== 啟動 =====
+liff.init({ liffId: LIFF_ID }).then(function(){
+  if (!liff.isLoggedIn()){ liff.login(); return; }
+  return liff.getProfile().then(function(p){
+    USER.id = p.userId; USER.name = p.displayName || '';
+    if (CLINIC) loadRooms();    // QR 已帶院區 → 直接選診間
+    else        loadClinics();  // 無 QR → 先讓病人選院區
+  });
+}).catch(function(){ fail('LINE 初始化失敗，請從 LINE 內開啟此頁。'); });
+</script>
+</body>
+</html>
