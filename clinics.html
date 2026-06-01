@@ -175,6 +175,10 @@ function render(){
 
 function setBar(t){ document.getElementById('bar').innerHTML = t; }
 
+// 先立即顯示全部院區，畫面不被定位卡住
+render();
+setBar('正在取得您的位置…（可先瀏覽下方院區）');
+
 // 即時叫號（透過後端代抓，避免 CORS）
 fetch(API + '?action=alltrack').then(function(r){ return r.json(); }).then(function(res){
   if (res && res.ok){ TRACK = res.track; render(); }
@@ -182,7 +186,6 @@ fetch(API + '?action=alltrack').then(function(r){ return r.json(); }).then(funct
 
 if (!navigator.geolocation){
   setBar('此裝置不支援定位，以下為全部院區');
-  render();
 } else {
   navigator.geolocation.getCurrentPosition(
     function(pos){
@@ -191,11 +194,12 @@ if (!navigator.geolocation){
       render();
     },
     function(){
-      setBar('未取得定位權限，以下為全部院區（可點導航查看距離）');
-      render();
+      if (!HERE) setBar('未取得定位，以下為全部院區（可點導航查看路線）');
     },
-    { enableHighAccuracy:true, timeout:8000, maximumAge:60000 }
+    { enableHighAccuracy:false, timeout:10000, maximumAge:300000 }
   );
+  // 保險：定位太慢也不卡住（手機/LINE 內建瀏覽器常見）
+  setTimeout(function(){ if (!HERE) setBar('定位較慢或未開啟，以下為全部院區（可點導航查看路線）'); }, 11000);
 }
 </script>
 </body>
