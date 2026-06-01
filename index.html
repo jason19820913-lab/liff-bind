@@ -26,6 +26,7 @@
   .ok{ color:var(--g); }
   .err{ color:#c0392b; }
   .clinic{ text-align:center; font-weight:700; color:var(--g); margin-bottom:10px; }
+  .info{ font-size:15px; color:#445; line-height:1.9; }
   .clist{ display:grid; gap:10px; }
   .cbtn{ border:2px solid var(--line); border-radius:12px; padding:14px; background:#fff; text-align:left; font-size:16px; font-weight:600; cursor:pointer; }
   .cbtn:disabled{ color:#aab; background:#f3f5f4; cursor:default; }
@@ -58,38 +59,29 @@ function el(id){ return document.getElementById(id); }
 function get(url){ return fetch(url).then(function(r){ return r.json(); }); }
 
 function render(rooms){
-  var n1 = FROM_QR ? '①' : '②', n2 = FROM_QR ? '②' : '③';
+  var n1 = FROM_QR ? '①' : '②';
   var h = '';
   if (!FROM_QR) h += '<button class="back" onclick="loadClinics()">← 重選院區</button>';
   if (CNAME) h += '<div class="clinic">'+CNAME+'</div>';
-  h += '<div class="card"><label>'+n1+' 選擇看診診間</label><div class="rooms" id="rooms"></div></div>';
-  h += '<div class="card"><label>'+n2+' 輸入您的看診號碼</label>'+
+  // 目前各診看診進度（純資訊，不需選；系統以最新叫號為準）
+  var info;
+  if (!rooms || !rooms.length) info = '目前暫無看診資料';
+  else info = '目前看診進度<br>' + rooms.map(function(rm){
+    return '・'+rm.room+'　'+(rm.doctor||'')+'　目前 '+(isNaN(rm.current)?'-':rm.current)+' 號';
+  }).join('<br>');
+  h += '<div class="card"><div class="info">'+info+'</div></div>';
+  h += '<div class="card"><label>'+n1+' 輸入您的看診號碼</label>'+
        '<input type="number" id="no" inputmode="numeric" placeholder="例：208"></div>';
   h += '<button class="go" id="go" disabled>完成綁定</button>';
   h += '<div class="msg" id="tip"></div>';
   el('app').innerHTML = h;
-
-  var box = el('rooms');
-  if (!rooms.length){ box.innerHTML = '<div class="msg">目前查無診間資料</div>'; }
-  rooms.forEach(function(rm, i){
-    var d = document.createElement('div');
-    d.className = 'room';
-    d.innerHTML = '<div class="r">'+rm.room+'</div><div class="d">'+(rm.doctor||'')+
-                  '</div><div class="c">目前 '+(isNaN(rm.current)?'-':rm.current)+' 號</div>';
-    d.onclick = function(){
-      pick.room = rm.room; pick.doctor = rm.doctor;
-      Array.prototype.forEach.call(box.children, function(c){ c.classList.remove('sel'); });
-      d.classList.add('sel'); check();
-    };
-    box.appendChild(d);
-  });
   el('no').addEventListener('input', check);
   el('go').onclick = submit;
 }
 
 function check(){
   var no = el('no').value;
-  el('go').disabled = !(pick.room && no && parseInt(no,10) > 0);
+  el('go').disabled = !(no && parseInt(no,10) > 0);
 }
 
 function submit(){
@@ -97,17 +89,15 @@ function submit(){
   el('go').disabled = true;
   el('tip').innerHTML = '送出中…';
   var u = API + '?action=bind'
-    + '&userId='   + encodeURIComponent(USER.id)
-    + '&name='     + encodeURIComponent(USER.name)
-    + '&clinic='   + encodeURIComponent(CLINIC)
+    + '&userId='    + encodeURIComponent(USER.id)
+    + '&name='      + encodeURIComponent(USER.name)
+    + '&clinic='    + encodeURIComponent(CLINIC)
     + '&clinicName='+ encodeURIComponent(CNAME)
-    + '&room='     + encodeURIComponent(pick.room)
-    + '&doctor='   + encodeURIComponent(pick.doctor)
-    + '&number='   + encodeURIComponent(no);
+    + '&number='    + encodeURIComponent(no);
   get(u).then(function(res){
     if (res.ok){
-      el('app').innerHTML = '<div class="msg ok">✅ 綁定完成！<br>'+CNAME+' '+pick.room+
-        '　號碼 '+no+'<br><br>快輪到您時會通知您，可關閉此頁。</div>';
+      el('app').innerHTML = '<div class="msg ok">✅ 綁定完成！<br>'+CNAME+'　您的號碼 '+no+
+        '<br><br>快輪到您時會主動通知您，可關閉此頁。</div>';
     } else {
       el('tip').innerHTML = '<span class="err">綁定失敗：'+(res.error||'請重試')+'</span>';
       el('go').disabled = false;
