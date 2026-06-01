@@ -14,6 +14,8 @@
   .bar{ background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:13px;
         color:var(--muted); text-align:center; margin-bottom:14px; }
   .bar b{ color:var(--g); }
+  .locbtn{ font-family:inherit; font-size:14px; font-weight:700; color:#fff; background:var(--g);
+           border:0; border-radius:9px; padding:9px 18px; cursor:pointer; }
   .card{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px 14px 12px; margin-bottom:12px; }
   .top{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
   .name{ font-size:17px; font-weight:700; }
@@ -177,30 +179,40 @@ function setBar(t){ document.getElementById('bar').innerHTML = t; }
 
 // 先立即顯示全部院區，畫面不被定位卡住
 render();
-setBar('正在取得您的位置…（可先瀏覽下方院區）');
 
 // 即時叫號（透過後端代抓，避免 CORS）
 fetch(API + '?action=alltrack').then(function(r){ return r.json(); }).then(function(res){
   if (res && res.ok){ TRACK = res.track; render(); }
 }).catch(function(){});
 
-if (!navigator.geolocation){
-  setBar('此裝置不支援定位，以下為全部院區');
-} else {
+// 提示列放一顆「開啟定位」按鈕，由病人主動點擊（手機最穩）
+function barBtn(text, label){
+  document.getElementById('bar').innerHTML =
+    '<div style="margin-bottom:8px">'+text+'</div>' +
+    '<button class="locbtn" onclick="locate()">📍 '+label+'</button>';
+}
+function locate(){
+  if (!navigator.geolocation){ setBar('此裝置不支援定位，以下為全部院區'); return; }
+  setBar('定位中…請稍候');
+  var done = false;
   navigator.geolocation.getCurrentPosition(
     function(pos){
+      done = true;
       HERE = { lat:pos.coords.latitude, lng:pos.coords.longitude };
       setBar('已依您的位置排序，<b>最近的院區排在最前面</b>');
       render();
     },
-    function(){
-      if (!HERE) setBar('未取得定位，以下為全部院區（可點導航查看路線）');
+    function(err){
+      done = true;
+      barBtn(err && err.code === 1
+        ? '定位權限已關閉，請至手機或瀏覽器設定開啟定位後再試'
+        : '定位失敗，請再試一次', '重新定位');
     },
     { enableHighAccuracy:false, timeout:10000, maximumAge:300000 }
   );
-  // 保險：定位太慢也不卡住（手機/LINE 內建瀏覽器常見）
-  setTimeout(function(){ if (!HERE) setBar('定位較慢或未開啟，以下為全部院區（可點導航查看路線）'); }, 11000);
+  setTimeout(function(){ if (!done && !HERE) barBtn('定位較慢，可再按一次，或直接瀏覽下方院區', '重新定位'); }, 11000);
 }
+barBtn('想知道哪間院區離您最近嗎？開啟定位即可依距離排序', '開啟定位');
 </script>
 </body>
 </html>
