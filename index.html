@@ -107,7 +107,7 @@ function submit(){
   get(u).then(function(res){
     if (res.ok){
       el('app').innerHTML = '<div class="msg ok">✅ 綁定完成！<br>'+CNAME+' '+pick.room+
-        '　號碼 '+no+'<br><br>還剩 5 位、3 位及輪到您時會通知您，可關閉此頁。</div>';
+        '　號碼 '+no+'<br><br>快輪到您時會通知您，可關閉此頁。</div>';
     } else {
       el('tip').innerHTML = '<span class="err">綁定失敗：'+(res.error||'請重試')+'</span>';
       el('go').disabled = false;
