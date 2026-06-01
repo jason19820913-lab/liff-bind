@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>金鶯診所 — 就近院區查詢</title>
+<style>
+  :root{ --g:#1f7a5a; --bg:#f5f7f6; --line:#e2e7e4; --muted:#6b7770; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{ margin:0; font-family:"Noto Sans TC",system-ui,sans-serif; background:var(--bg); color:#222; }
+  .wrap{ max-width:520px; margin:0 auto; padding:16px 14px 40px; }
+  h1{ font-size:19px; text-align:center; color:var(--g); margin:6px 0 2px; }
+  .sub{ text-align:center; color:var(--muted); font-size:13px; margin-bottom:14px; }
+  .bar{ background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:13px;
+        color:var(--muted); text-align:center; margin-bottom:14px; }
+  .bar b{ color:var(--g); }
+  .card{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px 14px 12px; margin-bottom:12px; }
+  .top{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+  .name{ font-size:17px; font-weight:700; }
+  .dist{ font-size:14px; font-weight:700; color:var(--g); white-space:nowrap; }
+  .cbody{ display:flex; gap:10px; align-items:flex-start; }
+  .cleft{ flex:1; min-width:0; }
+  .cright{ flex-shrink:0; min-width:78px; text-align:right; }
+  .tracklab{ font-size:11px; color:var(--muted); margin-top:6px; }
+  .tnum{ line-height:1.1; margin-top:2px; }
+  .tnum b{ color:var(--g); font-size:19px; }
+  .tnum span{ color:var(--muted); font-size:12px; margin-left:4px; }
+  .row{ font-size:13.5px; color:#41504a; margin-top:6px; line-height:1.5; }
+  .row .ic{ color:var(--g); font-weight:700; margin-right:4px; }
+  .acts{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:12px; }
+  .btn{ display:block; width:100%; text-align:center; text-decoration:none; font-size:14px; font-weight:600;
+        padding:9px 0; border-radius:10px; border:1px solid var(--g); color:var(--g); background:#fff;
+        font-family:inherit; cursor:pointer; }
+  .btn.fill{ background:var(--g); color:#fff; }
+  /* 班表彈窗 */
+  .overlay{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50;
+            align-items:flex-end; justify-content:center; }
+  .sheet{ background:#fff; width:100%; max-width:520px; max-height:88vh; border-radius:16px 16px 0 0;
+          display:flex; flex-direction:column; }
+  .ovhead{ display:flex; align-items:center; justify-content:space-between; padding:13px 16px;
+           border-bottom:1px solid var(--line); font-weight:700; color:var(--g); }
+  .ovclose{ border:0; background:none; font-size:18px; color:#999; cursor:pointer; }
+  .ovbody{ overflow:auto; padding:12px 14px 26px; }
+  .schlab{ font-weight:700; color:var(--g); margin:10px 0 6px; }
+  .schimg{ width:100%; border:1px solid var(--line); border-radius:8px; display:block; }
+  .schnote{ text-align:center; color:var(--muted); font-size:12px; margin:14px 0 4px; }
+  .closed{ opacity:.55; }
+  .tagopen{ font-size:11px; font-weight:600; color:#fff; background:var(--g); border-radius:6px; padding:1px 6px; margin-left:6px; }
+  .tagclose{ font-size:11px; font-weight:600; color:#fff; background:#b0b8b3; border-radius:6px; padding:1px 6px; margin-left:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>就近院區查詢</h1>
+  <div class="sub">依您目前位置，由近到遠排序</div>
+  <div class="bar" id="bar">正在取得您的位置…</div>
+  <div id="list"></div>
+</div>
+
+<div id="overlay" class="overlay" onclick="if(event.target===this)closeOverlay()">
+  <div class="sheet">
+    <div class="ovhead"><span id="ovtitle">班表</span><button class="ovclose" onclick="closeOverlay()">✕</button></div>
+    <div id="ovbody" class="ovbody"></div>
+  </div>
+</div>
+
+<script>
+// 13 院區資料（lat, lng 來自官方地圖標記）
+var CLINICS = [
+  {n:'鶯歌院區', a:'新北市鶯歌區國慶街167號', tel:'02-26702559', lat:24.9529837, lng:121.3513375, full:true},
+  {n:'三樹院區', a:'新北市樹林區學成路600號', tel:'02-26807101', lat:24.9458761, lng:121.3818186, full:true},
+  {n:'樹林院區', a:'新北市樹林區中華路124號', tel:'02-86850096', lat:24.9806516, lng:121.4176074, full:true},
+  {n:'桃園院區', a:'桃園市桃園區桃鶯路333號', tel:'03-3668311', lat:24.9820308, lng:121.3193793, full:true},
+  {n:'土城院區', a:'新北市土城區中央路二段155號', tel:'02-22625113', lat:24.976515, lng:121.442198, full:true},
+  {n:'八德院區', a:'桃園市八德區興豐路493號', tel:'03-3655225', lat:24.9304146, lng:121.2911793, full:true},
+  {n:'龍潭院區', a:'桃園市龍潭區北龍路154號', tel:'03-4990306', lat:24.8664383, lng:121.2147782, full:true},
+  {n:'大溪院區', a:'桃園市大溪區慈湖路13號', tel:'03-3880868', lat:24.8840177, lng:121.2894696, full:true},
+  {n:'大竹院區', a:'桃園市蘆竹區大竹路436號', tel:'03-3231266', lat:25.0217492, lng:121.2632595, full:false},
+  {n:'大湳院區', a:'桃園市八德區大智路13號', tel:'03-3630811', lat:24.9641796, lng:121.2997468, full:false},
+  {n:'平鎮院區', a:'桃園市平鎮區中豐路山頂段150-2號', tel:'03-4690006', lat:24.9008497, lng:121.2110723, full:false},
+  {n:'埔心院區', a:'桃園市楊梅區瑞溪路二段203號', tel:'03-4828666', lat:24.9099334, lng:121.1822147, full:false},
+  {n:'觀音院區', a:'桃園市觀音區大觀路二段113號', tel:'03-4833366', lat:25.0468336, lng:121.1422956, full:false}
+];
+var HOURS_FULL = '7:30–21:30（中午不休息）';
+var HOURS_SPLIT = '7:30–12:00、14:00–21:30（中午及18:00–18:30休診）';
+
+// Apps Script /exec（與綁定系統同一支），用來即時取得官網班表
+var API = 'https://script.google.com/macros/s/AKfycbyYmXOinG3AMnVQbVGdzR9AKqg-KUC7P_ofpjZfI2n7584Iu-v6GV1s5pW3bvblJ4nHLA/exec';
+var SCHED = null;
+
+function showSched(name){
+  document.getElementById('ovtitle').textContent = name + ' 班表';
+  document.getElementById('ovbody').innerHTML = '<div class="schnote">載入班表中…</div>';
+  document.getElementById('overlay').style.display = 'flex';
+  if (SCHED){ renderSched(name); return; }
+  fetch(API + '?action=schedule').then(function(r){ return r.json(); }).then(function(res){
+    if (res && res.ok){ SCHED = res.map; renderSched(name); }
+    else document.getElementById('ovbody').innerHTML = '<div class="schnote">讀取班表失敗，請稍後再試。</div>';
+  }).catch(function(){ document.getElementById('ovbody').innerHTML = '<div class="schnote">連線失敗，請稍後再試。</div>'; });
+}
+function renderSched(name){
+  var s = SCHED && SCHED[name], b = '';
+  if (!s || (!s.kb && !s.diet)){ document.getElementById('ovbody').innerHTML = '<div class="schnote">目前查無此院區班表。</div>'; return; }
+  if (s.kb)   b += '<div class="schlab">健保班表</div><a href="'+s.kb+'?openExternalBrowser=1" target="_blank" rel="noopener"><img class="schimg" src="'+s.kb+'"></a>';
+  if (s.diet) b += '<div class="schlab">減重班表</div><a href="'+s.diet+'?openExternalBrowser=1" target="_blank" rel="noopener"><img class="schimg" src="'+s.diet+'"></a>';
+  b += '<div class="schnote">點圖片可放大檢視 · 班表與官網即時同步</div>';
+  document.getElementById('ovbody').innerHTML = b;
+}
+function closeOverlay(){ document.getElementById('overlay').style.display = 'none'; }
+
+function hours(c){ return c.full ? HOURS_FULL : HOURS_SPLIT; }
+
+// 是否營業中（粗略：依時段判斷）
+function isOpen(c){
+  var now = new Date(), m = now.getHours()*60 + now.getMinutes();
+  var open = 7*60+30;
+  if (c.full) return m >= open && m <= 21*60+30;
+  // 分段：7:30-12:00、14:00-18:00、18:30-21:30
+  return (m>=open&&m<=12*60) || (m>=14*60&&m<=18*60) || (m>=18*60+30&&m<=21*60+30);
+}
+
+function haversine(la1,lo1,la2,lo2){
+  function r(d){ return d*Math.PI/180; }
+  var R=6371, dLa=r(la2-la1), dLo=r(lo2-lo1);
+  var x=Math.sin(dLa/2)*Math.sin(dLa/2)+Math.cos(r(la1))*Math.cos(r(la2))*Math.sin(dLo/2)*Math.sin(dLo/2);
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+function fmtDist(km){ return km<1 ? Math.round(km*1000)+' 公尺' : km.toFixed(1)+' 公里'; }
+
+var HERE = null, TRACK = null;   // 使用者位置、各院區即時叫號
+
+function navUrl(c){
+  var base = 'https://www.google.com/maps/dir/?api=1&destination='+c.lat+','+c.lng;
+  if (HERE) base += '&origin='+HERE.lat+','+HERE.lng;
+  return base + '&openExternalBrowser=1';
+}
+function trackHtml(name){
+  var rooms = TRACK && TRACK[name];
+  if (!rooms || !rooms.length) return '';
+  var inner = rooms.map(function(r){
+    return '<div class="tnum"><b>'+(isNaN(r.current)?'-':r.current)+'</b><span>'+r.room+'</span></div>';
+  }).join('');
+  return '<div class="tracklab">目前叫號</div>'+inner;
+}
+
+function render(){
+  var list = CLINICS.map(function(c){
+    return Object.assign({}, c, { d: HERE ? haversine(HERE.lat,HERE.lng,c.lat,c.lng) : null });
+  });
+  if (HERE) list.sort(function(a,b){ return a.d-b.d; });
+
+  var html = '';
+  list.forEach(function(c){
+    var open = isOpen(c), tk = trackHtml(c.n);
+    html += '<div class="card'+(open?'':' closed')+'">'
+      + '<div class="cbody">'
+        + '<div class="cleft">'
+          + '<div class="name">'+c.n+(open?'<span class="tagopen">看診中</span>':'<span class="tagclose">休診中</span>')+'</div>'
+          + '<div class="row"><span class="ic">📍</span>'+c.a+'</div>'
+          + '<div class="row"><span class="ic">🕘</span>'+hours(c)+'</div>'
+        + '</div>'
+        + '<div class="cright">'
+          + (c.d!=null?'<div class="dist">'+fmtDist(c.d)+'</div>':'')
+          + tk
+        + '</div>'
+      + '</div>'
+      + '<div class="acts">'
+        + '<a class="btn fill" href="'+navUrl(c)+'">導航</a>'
+        + '<button class="btn" onclick="showSched(\''+c.n+'\')">班表</button>'
+        + '<a class="btn" href="tel:'+c.tel.replace(/-/g,'')+'">撥號</a>'
+      + '</div></div>';
+  });
+  document.getElementById('list').innerHTML = html;
+}
+
+function setBar(t){ document.getElementById('bar').innerHTML = t; }
+
+// 即時叫號（透過後端代抓，避免 CORS）
+fetch(API + '?action=alltrack').then(function(r){ return r.json(); }).then(function(res){
+  if (res && res.ok){ TRACK = res.track; render(); }
+}).catch(function(){});
+
+if (!navigator.geolocation){
+  setBar('此裝置不支援定位，以下為全部院區');
+  render();
+} else {
+  navigator.geolocation.getCurrentPosition(
+    function(pos){
+      HERE = { lat:pos.coords.latitude, lng:pos.coords.longitude };
+      setBar('已依您的位置排序，<b>最近的院區排在最前面</b>');
+      render();
+    },
+    function(){
+      setBar('未取得定位權限，以下為全部院區（可點導航查看距離）');
+      render();
+    },
+    { enableHighAccuracy:true, timeout:8000, maximumAge:60000 }
+  );
+}
+</script>
+</body>
+</html>
