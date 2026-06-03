@@ -42,7 +42,7 @@
 <body>
 <div class="wrap">
   <h1>候診進度通知綁定</h1>
-  <div class="sub">綁定後，會主動通知</div>
+  <div class="sub">綁定後，還剩 5 位、3 位及輪到您時會主動通知</div>
   <div id="app"><div class="msg">載入中…</div></div>
 </div>
 
@@ -70,7 +70,7 @@ function infoText(rooms){
 }
 
 function render(rooms){
-  var n1 = FROM_QR ? '①' : '②';
+  var n1 = FROM_QR ? '①' : '②', n2 = FROM_QR ? '②' : '③';
   var h = '';
   if (!FROM_QR) h += '<button class="back" onclick="loadClinics()">← 重選院區</button>';
   if (CNAME) h += '<div class="clinic">'+CNAME+'</div>';
