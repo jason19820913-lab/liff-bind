@@ -42,7 +42,7 @@
 <body>
 <div class="wrap">
   <h1>候診進度通知綁定</h1>
-  <div class="sub">綁定後，輸入資料後候診動態會主動發送通知</div>
+  <div class="sub">綁定後，可以接受到掛號號碼以及候診推播</div>
   <div id="app"><div class="msg">載入中…</div></div>
 </div>
 
@@ -148,7 +148,7 @@ function renderClinics(list){
   (list||[]).forEach(function(c){
     var b = document.createElement('button');
     b.className = 'cbtn';
-    b.disabled = !c.active;
+    // 任何時段都可綁定：休診院區也能選
     b.innerHTML = c.name + (c.active
       ? '<span class="tag">看診中</span>'
       : '<span class="tag" style="color:#aab">休診</span>');
@@ -157,11 +157,11 @@ function renderClinics(list){
   });
 }
 function loadRooms(){
-  el('app').innerHTML = '<div class="msg">載入診間…</div>';
+  el('app').innerHTML = '<div class="msg">載入中…</div>';
+  // 抓得到就顯示目前診間/叫號；下診抓不到也照樣顯示表單，讓病人任何時段都能綁
   get(API + '?action=rooms&clinic=' + encodeURIComponent(CLINIC)).then(function(res){
-    if (res && res.ok) render(res.rooms);
-    else fail('讀取院區診間失敗，請重試。');
-  }).catch(function(){ fail('連線失敗，請重試。'); });
+    render((res && res.ok && res.rooms) ? res.rooms : []);
+  }).catch(function(){ render([]); });
 }
 
 // ===== 啟動 =====
