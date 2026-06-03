@@ -42,7 +42,7 @@
 <body>
 <div class="wrap">
   <h1>候診進度通知綁定</h1>
-  <div class="sub">綁定後，可以接受到掛號號碼以及候診推播</div>
+  <div class="sub">綁定後，會主動通知</div>
   <div id="app"><div class="msg">載入中…</div></div>
 </div>
 
@@ -62,18 +62,20 @@ var pick = { room:'', doctor:'' };
 function el(id){ return document.getElementById(id); }
 function get(url){ return fetch(url).then(function(r){ return r.json(); }); }
 
+function infoText(rooms){
+  if (!rooms || !rooms.length) return '目前暫無看診資料';
+  return '目前看診進度<br>' + rooms.map(function(rm){
+    return '・'+rm.room+'　'+(rm.doctor||'')+'　目前 '+(isNaN(rm.current)?'-':rm.current)+' 號';
+  }).join('<br>');
+}
+
 function render(rooms){
   var n1 = FROM_QR ? '①' : '②';
   var h = '';
   if (!FROM_QR) h += '<button class="back" onclick="loadClinics()">← 重選院區</button>';
   if (CNAME) h += '<div class="clinic">'+CNAME+'</div>';
-  // 目前各診看診進度（純資訊，不需選；系統以最新叫號為準）
-  var info;
-  if (!rooms || !rooms.length) info = '目前暫無看診資料';
-  else info = '目前看診進度<br>' + rooms.map(function(rm){
-    return '・'+rm.room+'　'+(rm.doctor||'')+'　目前 '+(isNaN(rm.current)?'-':rm.current)+' 號';
-  }).join('<br>');
-  h += '<div class="card"><div class="info">'+info+'</div></div>';
+  // 目前各診看診進度（純資訊；抓到才填，沒抓到不影響填寫）
+  h += '<div class="card"><div class="info" id="info">'+infoText(rooms)+'</div></div>';
   h += '<div class="card"><label>'+n1+' 輸入您的看診號碼</label>'+
        '<input type="number" id="no" inputmode="numeric" placeholder="例：208"></div>';
   h += '<div class="card"><label>'+n2+' 基本資料</label>'+
@@ -157,11 +159,10 @@ function renderClinics(list){
   });
 }
 function loadRooms(){
-  el('app').innerHTML = '<div class="msg">載入中…</div>';
-  // 抓得到就顯示目前診間/叫號；下診抓不到也照樣顯示表單，讓病人任何時段都能綁
+  render([]);   // 立即顯示表單，不等診間資料（避免卡在載入中）
   get(API + '?action=rooms&clinic=' + encodeURIComponent(CLINIC)).then(function(res){
-    render((res && res.ok && res.rooms) ? res.rooms : []);
-  }).catch(function(){ render([]); });
+    if (res && res.ok && res.rooms){ var box = el('info'); if (box) box.innerHTML = infoText(res.rooms); }
+  }).catch(function(){});
 }
 
 // ===== 啟動 =====
