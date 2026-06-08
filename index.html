@@ -10,7 +10,8 @@
   body{ margin:0; font-family:"Noto Sans TC",system-ui,sans-serif; background:var(--bg); color:#222; }
   .wrap{ max-width:480px; margin:0 auto; padding:20px 16px 40px; }
   h1{ font-size:20px; text-align:center; color:var(--g); margin:8px 0 4px; }
-  .sub{ text-align:center; color:#667; font-size:13px; margin-bottom:18px; }
+  .sub{ text-align:center; color:#667; font-size:13px; margin-bottom:10px; }
+  .notice{ color:#c0392b; font-size:13px; line-height:1.85; text-align:center; margin:0 4px 16px; }
   .card{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
   label{ display:block; font-size:14px; font-weight:600; margin:0 0 8px; }
   .rooms{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
@@ -43,6 +44,7 @@
 <div class="wrap">
   <h1>候診進度通知綁定</h1>
   <div class="sub">綁定後，看診當天報到即自動推播看診號碼與候診進度</div>
+  <div class="notice">※ 每人只需綁定一次<br>※ 一支手機可綁定多名家庭成員，候診推播以綁定手機通知為主<br>※ 綁定後，看診日仍需至櫃檯報到</div>
   <div id="app"><div class="msg">載入中…</div></div>
 </div>
 
