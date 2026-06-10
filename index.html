@@ -71,12 +71,8 @@ function infoText(rooms){
   }).join('<br>');
 }
 
-function render(rooms){
+function render(){
   var h = '';
-  if (!FROM_QR) h += '<button class="back" onclick="loadClinics()">← 重選院區</button>';
-  if (CNAME) h += '<div class="clinic">'+CNAME+'</div>';
-  // 目前各診看診進度（純資訊；抓到才填，沒抓到不影響填寫）
-  h += '<div class="card"><div class="info" id="info">'+infoText(rooms)+'</div></div>';
   h += '<div class="card"><label>綁定資料</label>'+
        '<div class="flab">姓名</div><input type="text" id="rn" class="fld" placeholder="請輸入姓名">'+
        '<div class="flab">身分證字號</div><input type="text" id="pid" class="fld" maxlength="10" autocapitalize="characters" placeholder="例 A123456789">'+
@@ -112,7 +108,7 @@ function submit(){
     + '&consent=1';
   get(u).then(function(res){
     if (res.ok){
-      el('app').innerHTML = '<div class="msg ok">✅ 綁定完成！<br>'+CNAME+'　'+rn+
+      el('app').innerHTML = '<div class="msg ok">✅ 綁定完成！<br>'+rn+
         '<br><br>看診當天報到後，系統會自動把看診號碼與候診進度推播給您，可關閉此頁。</div>';
     } else {
       el('tip').innerHTML = '<span class="err">綁定失敗：'+(res.error||'請重試')+'</span>';
@@ -161,8 +157,7 @@ liff.init({ liffId: LIFF_ID }).then(function(){
   if (!liff.isLoggedIn()){ liff.login(); return; }
   return liff.getProfile().then(function(p){
     USER.id = p.userId; USER.name = p.displayName || '';
-    if (CLINIC) loadRooms();    // QR 已帶院區 → 直接選診間
-    else        loadClinics();  // 無 QR → 先讓病人選院區
+    render();   // 直接顯示綁定表單（不需選院區）
   });
 }).catch(function(){ fail('LINE 初始化失敗，請從 LINE 內開啟此頁。'); });
 </script>
