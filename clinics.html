@@ -139,8 +139,11 @@ function navUrl(c){
 function trackHtml(name){
   var rooms = TRACK && TRACK[name];
   if (!rooms || !rooms.length) return '';
-  var inner = rooms.map(function(r){
-    return '<div class="tnum"><b>'+(isNaN(r.current)?'-':r.current)+'</b><span>'+r.room+'</span></div>';
+  // 只顯示有有效號碼的診間（沒開診的會是 null，要過濾掉，避免顯示 null）
+  var valid = rooms.filter(function(r){ return typeof r.current === 'number' && isFinite(r.current); });
+  if (!valid.length) return '';
+  var inner = valid.map(function(r){
+    return '<div class="tnum"><b>'+r.current+'</b><span>'+r.room+'</span></div>';
   }).join('');
   return '<div class="tracklab">目前叫號</div>'+inner;
 }
@@ -204,9 +207,12 @@ function locate(){
     },
     function(err){
       done = true;
-      barBtn(err && err.code === 1
-        ? '定位權限已關閉，請至手機或瀏覽器設定開啟定位後再試'
-        : '定位失敗，請再試一次', '重新定位');
+      var c = err && err.code;
+      var msg = c === 1 ? '定位被拒：請允許此瀏覽器使用定位，並開啟手機定位服務'
+              : c === 2 ? '無法取得位置：請確認手機 GPS／定位已開啟，或改用 Chrome／Safari 開啟此頁'
+              : c === 3 ? '定位逾時，請再試一次'
+              : '定位失敗，請再試一次';
+      barBtn(msg, '重新定位');
     },
     { enableHighAccuracy:false, timeout:10000, maximumAge:300000 }
   );
