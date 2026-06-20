@@ -183,10 +183,14 @@ function setBar(t){ document.getElementById('bar').innerHTML = t; }
 // 先立即顯示全部院區，畫面不被定位卡住
 render();
 
-// 即時叫號（透過後端代抓，避免 CORS）
-fetch(API + '?action=alltrack').then(function(r){ return r.json(); }).then(function(res){
-  if (res && res.ok){ TRACK = res.track; render(); }
-}).catch(function(){});
+// 即時叫號（透過後端代抓，避免 CORS）；每 10 秒自動更新一次
+function refreshTrack(){
+  fetch(API + '?action=alltrack').then(function(r){ return r.json(); }).then(function(res){
+    if (res && res.ok){ TRACK = res.track; render(); }
+  }).catch(function(){});
+}
+refreshTrack();
+setInterval(refreshTrack, 10000);
 
 // 提示列放一顆「開啟定位」按鈕，由病人主動點擊（手機最穩）
 function barBtn(text, label){
