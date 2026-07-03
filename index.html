@@ -12,6 +12,16 @@
   h1{ font-size:20px; text-align:center; color:var(--g); margin:8px 0 4px; }
   .sub{ text-align:center; color:#667; font-size:13px; margin-bottom:10px; }
   .notice{ color:#c0392b; font-size:13px; line-height:1.85; text-align:center; margin:0 4px 16px; }
+  .stitle{ text-align:center; font-size:18px; font-weight:700; color:var(--g); margin:2px 0 14px; }
+  .scard{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:12px; }
+  .sname{ font-size:16px; font-weight:700; }
+  .sclinic{ color:var(--g); font-size:14px; }
+  .snum{ font-size:15px; margin-top:8px; } .snum b{ color:var(--g); font-size:24px; }
+  .srooms{ font-size:14px; color:#445; margin-top:6px; }
+  .sahead{ font-size:15px; margin-top:8px; } .sahead b{ color:#e8622a; font-size:22px; }
+  .hot{ color:#c0392b; font-weight:700; }
+  .srefresh{ text-align:center; color:#8a94a0; font-size:12px; margin:4px 0 14px; }
+  .linkbtn{ width:100%; font-size:15px; font-weight:600; color:var(--g); background:#fff; border:1px solid var(--g); border-radius:12px; padding:12px; cursor:pointer; font-family:inherit; }
   .card{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
   label{ display:block; font-size:14px; font-weight:600; margin:0 0 8px; }
   .rooms{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
@@ -63,6 +73,44 @@ var pick = { room:'', doctor:'' };
 
 function el(id){ return document.getElementById(id); }
 function get(url){ return fetch(url).then(function(r){ return r.json(); }); }
+
+// ===== 候診進度（自助查看，每 10 秒刷新）=====
+var statusTimer = null;
+function stopStatusTimer(){ if (statusTimer){ clearInterval(statusTimer); statusTimer = null; } }
+function loadStatus(){
+  get(API + '?action=mystatus&userId=' + encodeURIComponent(USER.id)).then(function(res){
+    if (res && res.ok && res.list && res.list.length) renderStatus(res.list);
+    else if (res && res.ok && res.bound) renderBound();
+    else { stopStatusTimer(); render(); }
+  }).catch(function(){ stopStatusTimer(); render(); });
+}
+function renderBound(){
+  stopStatusTimer();
+  el('app').innerHTML = '<div class="msg ok">您已完成綁定 ✅<br><br>看診當天於櫃檯完成報到後，即可在此查看即時候診進度。</div>'
+    + '<button class="linkbtn" onclick="render()">綁定其他人 / 重新綁定</button>';
+}
+function renderStatus(list){
+  var h = '<div class="stitle">候診進度</div>';
+  list.forEach(function(it){
+    var maxc = -1; (it.rooms||[]).forEach(function(rm){ if (rm.current > maxc) maxc = rm.current; });
+    var roomsTxt = (it.rooms && it.rooms.length)
+      ? it.rooms.map(function(rm){ return rm.room+' '+rm.current+' 號'; }).join('、') : '尚未開診';
+    var ahead;
+    if (maxc < 0) ahead = '<span class="hot">尚未開診</span>';
+    else if (it.number - maxc <= 0) ahead = '<span class="hot">已輪到／已過號，請至櫃檯確認</span>';
+    else ahead = '前面還有約 <b>'+(it.number - maxc)+'</b> 號';
+    h += '<div class="scard">'
+      + '<div class="sname">'+(it.name||'')+'　<span class="sclinic">'+it.clinic+'</span></div>'
+      + '<div class="snum">您的號碼 <b>'+it.number+'</b></div>'
+      + '<div class="srooms">現在 '+roomsTxt+'</div>'
+      + '<div class="sahead">'+ahead+'</div>'
+      + '</div>';
+  });
+  h += '<div class="srefresh">畫面每 10 秒自動更新</div>';
+  h += '<button class="linkbtn" onclick="stopStatusTimer(); render();">綁定其他人 / 重新綁定</button>';
+  el('app').innerHTML = h;
+  if (!statusTimer) statusTimer = setInterval(loadStatus, 10000);
+}
 
 function infoText(rooms){
   if (!rooms || !rooms.length) return '目前暫無看診資料';
@@ -157,7 +205,7 @@ liff.init({ liffId: LIFF_ID }).then(function(){
   if (!liff.isLoggedIn()){ liff.login(); return; }
   return liff.getProfile().then(function(p){
     USER.id = p.userId; USER.name = p.displayName || '';
-    render();   // 直接顯示綁定表單（不需選院區）
+    loadStatus();   // 有進行中的看診 → 顯示候診進度；否則顯示綁定表單
   });
 }).catch(function(){ fail('LINE 初始化失敗，請從 LINE 內開啟此頁。'); });
 </script>
