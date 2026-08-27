@@ -35,6 +35,13 @@
   .flab{ font-size:13px; color:#667; font-weight:600; margin:2px 0 4px; }
   .consent{ display:flex; align-items:flex-start; gap:8px; font-size:14px; font-weight:500; color:#445; margin:0 2px 12px; line-height:1.5; }
   .consent input{ margin-top:3px; transform:scale(1.25); }
+  .agree{ background:#fff; border:1px solid var(--line); border-radius:12px; margin:0 2px 12px; overflow:hidden; }
+  .agree summary{ cursor:pointer; list-style:none; padding:13px 14px; font-size:14px; font-weight:600; color:var(--g); }
+  .agree summary::-webkit-details-marker{ display:none; }
+  .agree summary::after{ content:'▼ 展開'; float:right; font-size:12px; font-weight:500; color:#8aa; }
+  .agree[open] summary::after{ content:'▲ 收合'; }
+  .agreebody{ padding:2px 15px 15px; font-size:12.5px; color:#445; line-height:1.85; }
+  .agreebody b{ color:#2c3a34; }
   button.go{ width:100%; font-size:18px; font-weight:700; color:#fff; background:var(--g); border:0; border-radius:12px; padding:15px; margin-top:6px; }
   button.go:disabled{ background:#9bb8ac; }
   .msg{ text-align:center; font-size:14px; padding:14px; }
@@ -125,7 +132,21 @@ function render(){
        '<div class="flab">姓名</div><input type="text" id="rn" class="fld" placeholder="請輸入姓名">'+
        '<div class="flab">身分證字號</div><input type="text" id="pid" class="fld" maxlength="10" autocapitalize="characters" placeholder="例 A123456789">'+
        '</div>';
-  h += '<label class="consent"><input type="checkbox" id="cs"> 我同意提供上述資料，供候診通知與報到自動帶號使用。</label>';
+  h += '<details class="agree"><summary>個人資料蒐集、處理及利用告知暨同意書</summary>'
+     + '<div class="agreebody">'
+     + '金鶯診所（金鶯健康股份有限公司，以下稱本院）為提供 LINE 候診通知與報到自動帶號服務，依《個人資料保護法》第 8 條規定，向您告知並徵求同意如下：<br><br>'
+     + '<b>一、蒐集目的：</b>候診叫號通知、看診報到號碼推播、就醫聯繫及醫療服務品質提升。<br>'
+     + '<b>二、蒐集之個人資料類別：</b>姓名、身分證字號，及您的 LINE 帳號識別碼（user ID）。<br>'
+     + '<b>三、利用之期間、地區、對象及方式：</b><br>'
+     + '　・期間：自您同意之日起，至您停止使用本服務或本院停止提供本服務之日止。<br>'
+     + '　・地區：中華民國境內（資料儲存於本院所使用之雲端服務）。<br>'
+     + '　・對象：本院及受本院委託處理之資訊服務提供者。<br>'
+     + '　・方式：於前述目的範圍內，以自動化或非自動化方式蒐集、處理及利用。<br>'
+     + '<b>四、當事人權利：</b>您得依個資法第 3 條，向本院請求查詢、閱覽、製給複製本、補充或更正，並得請求停止蒐集、處理、利用或請求刪除您的個人資料。<br>'
+     + '<b>五、不提供之影響：</b>您可自由選擇是否提供個人資料；若不提供，將無法使用本 LINE 候診通知及報到帶號服務，但不影響您於本院之一般就醫權益。<br>'
+     + '<b>六、</b>本院僅於前述目的範圍內使用您的資料，不會用於行銷或提供予與前述目的無關之第三方。'
+     + '</div></details>';
+  h += '<label class="consent"><input type="checkbox" id="cs"> 我已詳閱並同意上述《個人資料蒐集、處理及利用告知暨同意書》。</label>';
   h += '<button class="go" id="go" disabled>完成綁定</button>';
   h += '<div class="msg" id="tip"></div>';
   el('app').innerHTML = h;
