@@ -81,7 +81,8 @@ var CLINICS = [
   {n:'大湳院區', a:'桃園市八德區大智路13號', tel:'03-3630811', lat:24.9641796, lng:121.2997468, full:false},
   {n:'平鎮院區', a:'桃園市平鎮區中豐路山頂段150-2號', tel:'03-4690006', lat:24.9008497, lng:121.2110723, full:false},
   {n:'埔心院區', a:'桃園市楊梅區瑞溪路二段203號', tel:'03-4828666', lat:24.9099334, lng:121.1822147, full:false},
-  {n:'觀音院區', a:'桃園市觀音區大觀路二段113號', tel:'03-4833366', lat:25.0468336, lng:121.1422956, full:false}
+  {n:'觀音院區', a:'桃園市觀音區大觀路二段113號', tel:'03-4833366', lat:25.0468336, lng:121.1422956, full:false},
+  {n:'龍岡院區', a:'桃園市中壢區龍東路390號', tel:'03-4665666', lat:24.9328648, lng:121.2557877, full:false}
 ];
 var HOURS_FULL = '7:30–21:30（中午不休息）';
 var HOURS_SPLIT = '7:30–12:00、14:00–21:30（中午及18:00–18:30休診）';
@@ -102,10 +103,9 @@ function showSched(name){
 }
 function renderSched(name){
   var s = SCHED && SCHED[name], b = '';
-  if (!s || (!s.kb && !s.diet)){ document.getElementById('ovbody').innerHTML = '<div class="schnote">目前查無此院區班表。</div>'; return; }
-  if (s.kb)   b += '<div class="schlab">健保班表</div><a href="'+s.kb+'?openExternalBrowser=1" target="_blank" rel="noopener"><img class="schimg" src="'+s.kb+'"></a>';
-  if (s.diet) b += '<div class="schlab">減重班表</div><a href="'+s.diet+'?openExternalBrowser=1" target="_blank" rel="noopener"><img class="schimg" src="'+s.diet+'"></a>';
-  b += '<div class="schnote">點圖片可放大檢視 · 班表與官網即時同步</div>';
+  if (!s || !s.img){ document.getElementById('ovbody').innerHTML = '<div class="schnote">目前查無此院區班表。</div>'; return; }
+  b += '<div class="schlab">門診班表</div><a href="'+s.img+'?openExternalBrowser=1" target="_blank" rel="noopener"><img class="schimg" src="'+s.img+'"></a>';
+  b += '<div class="schnote">點圖片可放大檢視 · 與官網即時同步</div>';
   document.getElementById('ovbody').innerHTML = b;
 }
 function closeOverlay(){ document.getElementById('overlay').style.display = 'none'; }
