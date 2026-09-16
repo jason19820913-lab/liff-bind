@@ -78,7 +78,7 @@ var CLINICS = [
   {n:'龍潭院區', a:'桃園市龍潭區北龍路154號', tel:'03-4990306', lat:24.8664383, lng:121.2147782, full:true},
   {n:'大溪院區', a:'桃園市大溪區慈湖路13號', tel:'03-3880868', lat:24.8840177, lng:121.2894696, full:true},
   {n:'大竹院區', a:'桃園市蘆竹區大竹路436號', tel:'03-3231266', lat:25.0217492, lng:121.2632595, full:false},
-  {n:'大湳院區', a:'桃園市八德區大智路13號', tel:'03-3630811', lat:24.9641796, lng:121.2997468, full:false},
+  {n:'大湳院區', a:'桃園市八德區大智路13號', tel:'03-3630811', lat:24.9641796, lng:121.2997468, full:true},
   {n:'平鎮院區', a:'桃園市平鎮區中豐路山頂段150-2號', tel:'03-4690006', lat:24.9008497, lng:121.2110723, full:false},
   {n:'埔心院區', a:'桃園市楊梅區瑞溪路二段203號', tel:'03-4828666', lat:24.9099334, lng:121.1822147, full:false},
   {n:'觀音院區', a:'桃園市觀音區大觀路二段113號', tel:'03-4833366', lat:25.0468336, lng:121.1422956, full:false},
@@ -191,6 +191,23 @@ function refreshTrack(){
 }
 refreshTrack();
 setInterval(refreshTrack, 10000);
+
+// 營業時間與官網連動：後端代抓 drking.com.tw 官網，回傳各院區 full/split，覆蓋預設值
+function refreshHours(){
+  fetch(API + '?action=hours').then(function(r){ return r.json(); }).then(function(res){
+    if (!res || !res.ok || !res.hours) return;
+    var changed = false;
+    CLINICS.forEach(function(c){
+      var v = res.hours[c.n];
+      if (v === 'full' || v === 'split'){
+        var nf = (v === 'full');
+        if (c.full !== nf){ c.full = nf; changed = true; }
+      }
+    });
+    if (changed) render();
+  }).catch(function(){});   // 抓不到就沿用頁面內建的預設時間
+}
+refreshHours();
 
 // 提示列放一顆「開啟定位」按鈕，由病人主動點擊（手機最穩）
 function barBtn(text, label){
