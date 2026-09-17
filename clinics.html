@@ -140,7 +140,7 @@ function trackHtml(name){
   var rooms = TRACK && TRACK[name];
   if (!rooms || !rooms.length) return '';
   // 只顯示有有效號碼的診間（沒開診的會是 null，要過濾掉，避免顯示 null）
-  var valid = rooms.filter(function(r){ return typeof r.current === 'number' && isFinite(r.current); });
+  var valid = rooms.filter(function(r){ return typeof r.current === 'number' && isFinite(r.current) && r.current > 0; });
   if (!valid.length) return '';
   var inner = valid.map(function(r){
     return '<div class="tnum"><b>'+r.current+'</b><span>'+r.room+'</span></div>';
