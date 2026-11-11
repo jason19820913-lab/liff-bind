@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>綁定候診通知</title>
+<title>金鶯診所身份綁定</title>
 <style>
   :root{ --g:#1f7a5a; --bg:#f5f7f6; --line:#dfe5e2; }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -59,9 +59,8 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>候診進度通知綁定</h1>
-  <div class="sub">綁定後，看診當天報到即自動推播看診號碼與候診進度</div>
-  <div class="notice">※ 每人只需綁定一次<br>※ 一支手機可綁定多名家庭成員，候診推播以綁定手機通知為主<br>※ 綁定後，看診日仍需至櫃檯報到</div>
+  <h1>金鶯診所身份綁定</h1>
+  <div class="notice">※ 每人只需綁定一次<br>※ 一支手機可綁定多名家庭成員<br>※ 綁定後，看診日仍需至櫃檯報到</div>
   <div id="app"><div class="msg">載入中…</div></div>
 </div>
 
@@ -131,6 +130,8 @@ function render(){
   h += '<div class="card"><label>綁定資料</label>'+
        '<div class="flab">姓名</div><input type="text" id="rn" class="fld" placeholder="請輸入姓名">'+
        '<div class="flab">身分證字號</div><input type="text" id="pid" class="fld" maxlength="10" autocapitalize="characters" placeholder="例 A123456789">'+
+       '<button type="button" class="linkbtn" id="qb" style="padding:9px;font-size:14px;margin:-2px 0 4px" disabled>查詢是否已綁定過</button>'+
+       '<div id="qtip" style="font-size:14px;text-align:center;margin:6px 0 10px;min-height:1em"></div>'+
        '<div class="flab">手機號碼</div><input type="tel" id="ph" class="fld" maxlength="10" inputmode="numeric" placeholder="例 0912345678">'+
        '</div>';
   h += '<details class="agree"><summary>個人資料蒐集、處理及利用告知暨同意書</summary>'
@@ -157,6 +158,25 @@ function render(){
   el('ph').addEventListener('input', function(){ this.value = this.value.replace(/[^0-9]/g,''); });
   el('cs').addEventListener('change', check);
   el('go').onclick = submit;
+  el('qb').onclick = queryBound;
+  el('pid').addEventListener('input', function(){ el('qtip').innerHTML = ''; });
+}
+
+// 輸入身分證後查詢：此 LINE 帳號是否已綁定過這個身分證（只讀試算表，速度快）
+function queryBound(){
+  var pid = el('pid').value.trim().toUpperCase();
+  el('qb').disabled = true;
+  el('qtip').innerHTML = '查詢中…';
+  get(API + '?action=isbound&userId=' + encodeURIComponent(USER.id) + '&pid=' + encodeURIComponent(pid)).then(function(res){
+    if (!el('qtip')) return;
+    if (res && res.ok && res.bound) el('qtip').innerHTML = '<span class="ok">✅ 此身分證已綁定過，不需要再綁定，可直接關閉此頁。</span>';
+    else if (res && res.ok)         el('qtip').innerHTML = '<span class="err">尚未綁定，請填寫下方資料完成綁定。</span>';
+    else                            el('qtip').innerHTML = '<span class="err">查詢失敗：'+((res && res.error)||'請重試')+'</span>';
+    check();
+  }).catch(function(){
+    if (el('qtip')) el('qtip').innerHTML = '<span class="err">連線失敗，請稍後再試</span>';
+    check();
+  });
 }
 
 function check(){
@@ -167,6 +187,7 @@ function check(){
         && /^09[0-9]{8}$/.test(el('ph').value.trim())
         && el('cs').checked;
   el('go').disabled = !ok;
+  if (el('qb')) el('qb').disabled = !(USER.id && /^[A-Z][0-9]{9}$/.test(el('pid').value.trim()));
 }
 
 function submit(){
@@ -185,7 +206,7 @@ function submit(){
   get(u).then(function(res){
     if (res.ok){
       el('app').innerHTML = '<div class="msg ok">✅ 綁定完成！<br>'+rn+
-        '<br><br>看診當天報到後，系統會自動把看診號碼與候診進度推播給您，可關閉此頁。</div>';
+        '<br><br>您已完成金鶯診所身份綁定，可關閉此頁。</div>';
     } else {
       el('tip').innerHTML = '<span class="err">綁定失敗：'+(res.error||'請重試')+'</span>';
       el('go').disabled = false;
@@ -231,8 +252,7 @@ function loadRooms(){
 // ===== 啟動 =====
 // 一進頁先立即畫出綁定表單（表單不需等後端），送出鈕在拿到 userId 前保持鎖定；
 // LINE 登入就緒後再於背景查詢：若已綁定或看診中，才把畫面換成對應狀態。
-// 先確認是否綁過：已綁定 → 顯示「已完成綁定」；未綁定 → 才顯示表單（避免綁過的人又重填一次）
-el('app').innerHTML = '<div class="msg">確認綁定狀態中…</div>';
+render();
 liff.init({ liffId: LIFF_ID }).then(function(){
   if (!liff.isLoggedIn()){ liff.login(); return; }
   return liff.getProfile().then(function(p){
