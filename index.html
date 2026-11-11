@@ -231,7 +231,8 @@ function loadRooms(){
 // ===== 啟動 =====
 // 一進頁先立即畫出綁定表單（表單不需等後端），送出鈕在拿到 userId 前保持鎖定；
 // LINE 登入就緒後再於背景查詢：若已綁定或看診中，才把畫面換成對應狀態。
-render();
+// 先確認是否綁過：已綁定 → 顯示「已完成綁定」；未綁定 → 才顯示表單（避免綁過的人又重填一次）
+el('app').innerHTML = '<div class="msg">確認綁定狀態中…</div>';
 liff.init({ liffId: LIFF_ID }).then(function(){
   if (!liff.isLoggedIn()){ liff.login(); return; }
   return liff.getProfile().then(function(p){
